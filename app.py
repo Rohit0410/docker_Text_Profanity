@@ -16,7 +16,7 @@ import pandas as pd
 
 from flask import jsonify,request,Flask
 
-pipe = pipeline("text-classification", model=r"D:\Rohit\TextProfanity\rohit\new_model")
+pipe = pipeline("text-classification", model="GunMan0410/Text_Profanity")
 
 app = Flask(__name__)
 
