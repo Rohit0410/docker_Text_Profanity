@@ -18,7 +18,7 @@ from googletrans import Translator
 from flask import Flask, request, jsonify
 
 # Define the path for the CSV file and load necessary resources
-vector_csv_path = '/usr/src/app/vector_data.csv'
+vector_csv_path = r'D:\Rohit\TextProfanity\latest_15\text_profanity\vector_data.csv'
 
 # Download NLTK stopwords
 nltk.download('stopwords')
@@ -26,52 +26,44 @@ stop_words = set(stopwords.words('english')).union(ENGLISH_STOP_WORDS)
 
 app = Flask(__name__)
 
-# # Custom transformer to remove standalone special characters
-# class StandaloneSpecialCharRemover(BaseEstimator, TransformerMixin):
-#     def fit(self, X, y=None):
-#         return self
+# Custom transformer to remove standalone special characters
+class StandaloneSpecialCharRemover(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
 
-#     def transform(self, X, y=None):
-#         pattern = r'(?<!\w)[^\w\s](?!\w)'
-#         return [re.sub(pattern, '', text) for text in X]    
+    def transform(self, X, y=None):
+        pattern = r'(?<!\w)[^\w\s](?!\w)'
+        return [re.sub(pattern, '', text) for text in X]
 
-# # Custom transformer to convert text to lowercase
-# class LowercaseTransformer(BaseEstimator, TransformerMixin):
-#     def fit(self, X, y=None):
-#         return self
+# Custom transformer to convert text to lowercase
+class LowercaseTransformer(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
 
-#     def transform(self, X, y=None):
-#         return [text.lower() for text in X]
+    def transform(self, X, y=None):
+        return [text.lower() for text in X]
 
-# # Custom transformer to convert emojis to textual representation
-# class EmojiTransformer(BaseEstimator, TransformerMixin):
-#     def fit(self, X, y=None):
-#         return self
+# Custom transformer to convert emojis to textual representation
+class EmojiTransformer(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
 
-#     def transform(self, X, y=None):
-#         return [emoji.demojize(text) for text in X]
+    def transform(self, X, y=None):
+        return [emoji.demojize(text) for text in X]
 
-# # Custom transformer to remove stopwords
-# class StopwordsRemover(BaseEstimator, TransformerMixin):
-#     def fit(self, X, y=None):
-#         return self
+# Custom transformer to remove stopwords
+class StopwordsRemover(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
 
-#     def transform(self, X, y=None):
-#         return [' '.join([word for word in text.split() if word not in stop_words]) for text in X]
+    def transform(self, X, y=None):
+        return [' '.join([word for word in text.split() if word not in stop_words]) for text in X]
 
 # Load the SpaCy model
 nlp = spacy.load('en_core_web_lg')
 
 # Load the joblib preprocessing pipeline
-# preprocessing_pipeline = joblib.load('/usr/src/app/text_preprocessing_pipeline.joblib')
-def preprocessing_pipeline(X):
-    pattern = r'(?<!\w)[^\w\s](?!\w)'
-    X = [re.sub(pattern, '', text) for text in X]
-    X = [text.lower() for text in X]
-    X = [emoji.demojize(text) for text in X]
-    X = [' '.join([word for word in text.split() if word not in stop_words]) for text in X]
-    X = ' '.join(X)
-    return X
+preprocessing_pipeline = joblib.load(r'D:\Rohit\TextProfanity\latest_15\text_profanity\text_preprocessing_pipeline.joblib')
 
 # Function to load CSV with a fallback encoding
 def load_csv_with_fallback(csv_path):
@@ -104,13 +96,13 @@ def transliterate_and_translate(text):
     return transliterated_text, translation.text
 
 # Load the forbidden words dictionary
-forbidden_words_path = '/usr/src/app/abusive_words.txt'
+forbidden_words_path = r'D:\Rohit\TextProfanity\latest_15\text_profanity\abusive_words.txt'
 forbidden_words = load_words(forbidden_words_path)
 
 # Load the vector data
 vector_df = load_csv_with_fallback(vector_csv_path)
 
-def process_user_input(user_input, vector_df=vector_df, nlp=nlp, forbidden_words=forbidden_words):
+def process_user_input(user_input, vector_df=vector_df, nlp=nlp, preprocessing_pipeline=preprocessing_pipeline, forbidden_words=forbidden_words):
     # Initialize variables for transliterated and translated text
     transliterated_text = None
     translated_text = None
@@ -171,7 +163,7 @@ def process_user_input(user_input, vector_df=vector_df, nlp=nlp, forbidden_words
         return None, None, None, None  # Ensure all four variables are returned as None
 
     # Preprocess user input using the joblib pipeline
-    cleaned_user_input = preprocessing_pipeline(translated_for_processing)
+    cleaned_user_input = preprocessing_pipeline.transform([translated_for_processing])[0]
 
     # Process user input
     user_doc = nlp(cleaned_user_input)
@@ -239,7 +231,7 @@ def score():
         return jsonify({'error': "Please input text."}), 400
     
     # Process user input and get similarity score and labels
-    similarity_score, assigned_label_similarity, hf_label_score, assigned_based_on_similarity = process_user_input(text, vector_df, nlp, forbidden_words)
+    similarity_score, assigned_label_similarity, hf_label_score, assigned_based_on_similarity = process_user_input(text, vector_df, nlp, preprocessing_pipeline, forbidden_words)
     
     # Check if similarity_score is None
     if similarity_score is None:
